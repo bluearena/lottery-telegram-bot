@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	f "fmt"
 	"log"
+	"lottery/buy"
+	"lottery/drawinfo"
 	"lottery/ultis"
 	"net/http"
 	"time"
@@ -23,7 +25,6 @@ func getJson(url string, target interface{}) error {
 	return json.NewDecoder(r.Body).Decode(target)
 }
 
-var api_path = "https://qtl-performance-kyc-api.quanta.im/lottery/latest-round/info"
 var numericKeyboard = tgbotapi.NewReplyKeyboard(
 	tgbotapi.NewKeyboardButtonRow(
 		tgbotapi.NewKeyboardButton("1"),
@@ -38,7 +39,6 @@ var numericKeyboard = tgbotapi.NewReplyKeyboard(
 )
 
 func main() {
-	response := new(ultis.Response)
 	bot, err := tgbotapi.NewBotAPI("552167461:AAEKBaMvqKSKjotbaWih_5HzK7Eqcqxc4MM")
 	if err != nil {
 		log.Panic(err)
@@ -58,17 +58,23 @@ func main() {
 			f.Println("update.Message.Command()", command)
 			switch update.Message.Command() {
 			case "drawinfo":
-				var result ultis.RoundInfoResult
-				ultis.GetJson(api_path, response)
-				result = ultis.FormatDrawInfo(response.Result)
-				f.Println("response %v", response)
-				f.Println("data%v", result)
-				textMsg := f.Sprintf("RAFFLE\nDraw:%d\nLotteryState:%s\nJackpotWinning(USD):%s\nTicketPrice(USD):%s", result.Draw, result.Stage, result.JackpotInUsd, result.TicketPriceInUsd)
+				var formatParams ultis.DrawInfoParmas = ultis.FilterGameDrawInfo(update.Message.Text)
+				var textMsg string
+				if formatParams.Game == "649" {
+					textMsg = drawinfo.GetAndFormat649DrawInfo()
+				} else if formatParams.Game == "raffle" {
+					textMsg = drawinfo.GetAndFormatRaffleDrawInfo()
+				} else {
+					textMsg = "We support 2 games Raffle and 649 now!"
+				}
 				msg.Text = textMsg
-			case "buy":
+			case "buy649":
+				buy.Buy649(update.Message.Text)
 				msg.Text = "Enter your eth"
 			case "status":
 				msg.Text = "I'm ok."
+			case "link":
+				msg.Text = "http://zing.vn"
 			default:
 				msg.Text = "I don't know that command"
 			}
